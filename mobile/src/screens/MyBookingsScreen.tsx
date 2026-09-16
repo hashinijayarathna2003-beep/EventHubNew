@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function MyBookingsScreen() {
@@ -16,31 +16,23 @@ export default function MyBookingsScreen() {
     if (!session?.user) return;
     
     setLoading(true);
-    // Fetch bookings and join with events
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*, event:events(*)')
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error fetching bookings:', error);
-    } else {
+    try {
+      const data = await api.get('/bookings');
       setBookings(data || []);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: 'cancelled' })
-      .eq('id', bookingId);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
+    try {
+      await api.post(`/bookings/${bookingId}/cancel`, {});
       Alert.alert('Success', 'Booking cancelled.');
       fetchBookings(); // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   };
 

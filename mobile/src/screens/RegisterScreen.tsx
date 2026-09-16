@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RegisterScreen({ navigation }: any) {
@@ -8,6 +10,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setSession } = useAuth();
 
   async function signUpWithEmail() {
     if (!email || !password || !fullName) {
@@ -16,22 +19,16 @@ export default function RegisterScreen({ navigation }: any) {
     }
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-
-    if (error) {
+    try {
+      const data = await api.post('/auth/register', { email, password, name: fullName });
+      await AsyncStorage.setItem('jwt_token', data.token);
+      await AsyncStorage.setItem('user_info', JSON.stringify(data.user));
+      setSession({ user: data.user });
+    } catch (error: any) {
       Alert.alert('Error', error.message);
-    } else {
-      Alert.alert('Success', 'Check your email for the confirmation link, or you can log in directly if email confirmation is disabled.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (

@@ -1,45 +1,50 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type User = {
+  id: number;
+  email: string;
+  name: string;
+};
 
 type AuthContextType = {
-  session: Session | null;
-  user: User | null;
+  session: { user: User | null } | null;
   loading: boolean;
+  setSession: (session: { user: User | null } | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
-  user: null,
   loading: true,
+  setSession: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<{ user: User | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    // Check for stored token and user info on mount
+    const loadSession = async () => {
+      try {
+        const token = await AsyncStorage.getItem('jwt_token');
+        const userStr = await AsyncStorage.getItem('user_info');
+        
+        if (token && userStr) {
+          setSession({ user: JSON.parse(userStr) });
+        }
+      } catch (e) {
+        console.error('Failed to load session', e);
+      } finally {
+        setLoading(false);
       }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
     };
+    
+    loadSession();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user, loading }}>
+    <AuthContext.Provider value={{ session, loading, setSession }}>
       {children}
     </AuthContext.Provider>
   );

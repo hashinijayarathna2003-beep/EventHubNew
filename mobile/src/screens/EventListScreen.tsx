@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useNavigation } from '@react-navigation/native';
 
 export default function EventListScreen() {
@@ -14,13 +14,14 @@ export default function EventListScreen() {
 
   const fetchEvents = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('events').select('*');
-    if (error) {
-      console.error('Error fetching events:', error);
-    } else {
+    try {
+      const data = await api.get('/events');
       setEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const renderEvent = ({ item }: { item: any }) => (

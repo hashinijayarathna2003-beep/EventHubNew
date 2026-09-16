@@ -1,22 +1,29 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setSession } = useAuth();
 
   async function signInWithEmail() {
+    if (!email || !password) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) Alert.alert('Error', error.message);
-    setLoading(false);
+    try {
+      const data = await api.post('/auth/login', { email, password });
+      await AsyncStorage.setItem('jwt_token', data.token);
+      await AsyncStorage.setItem('user_info', JSON.stringify(data.user));
+      setSession({ user: data.user });
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

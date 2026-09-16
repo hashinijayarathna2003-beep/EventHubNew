@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Button, ActivityIndicator, Alert } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function EventDetailsScreen() {
@@ -17,13 +17,14 @@ export default function EventDetailsScreen() {
 
   const fetchEventDetails = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('events').select('*').eq('id', eventId).single();
-    if (error) {
-      console.error('Error fetching event details:', error);
-    } else {
+    try {
+      const data = await api.get(`/events/${eventId}`);
       setEvent(data);
+    } catch (error) {
+      console.error('Error fetching event details:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleBook = async () => {
@@ -32,19 +33,11 @@ export default function EventDetailsScreen() {
       return;
     }
     
-    const { data, error } = await supabase.from('bookings').insert([
-      {
-        user_id: session.user.id,
-        event_id: event.id,
-        seats: 1,
-        status: 'confirmed'
-      }
-    ]);
-
-    if (error) {
-      Alert.alert('Booking Failed', error.message);
-    } else {
+    try {
+      await api.post('/bookings', { event_id: event.id, seats: 1 });
       Alert.alert('Success!', 'Your booking is confirmed.');
+    } catch (error: any) {
+      Alert.alert('Booking Failed', error.message);
     }
   };
 

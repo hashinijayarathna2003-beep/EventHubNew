@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Button } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
-  const { session } = useAuth();
+  const { session, setSession } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await AsyncStorage.removeItem('jwt_token');
+    await AsyncStorage.removeItem('user_info');
+    setSession(null);
   };
 
   return (
